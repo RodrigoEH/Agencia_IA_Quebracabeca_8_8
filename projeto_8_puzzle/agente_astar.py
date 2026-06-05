@@ -1,4 +1,4 @@
-"""ETAPA 5: implementação do algoritmo A* para o quebra-cabeça de 8 peças."""
+"""ETAPAS 5 E 7: implementação do algoritmo A* com histórico resumido das expansões."""
 
 from __future__ import annotations
 
@@ -61,6 +61,54 @@ def criar_resultado(
     }
 
 
+def listar_open_validos(open_list, melhor_g, closed_list):
+    """Lista os estados válidos da Open List em ordem de prioridade."""
+    itens_ordenados = sorted(open_list, key=lambda item: (item[0], item[1]))
+    estados_validos = []
+    estados_vistos = set()
+
+    for _, _, no in itens_ordenados:
+        if no.g > melhor_g.get(no.estado, float("inf")):
+            continue
+
+        if no.estado in closed_list:
+            continue
+
+        if no.estado in estados_vistos:
+            continue
+
+        estados_vistos.add(no.estado)
+        estados_validos.append(no.estado)
+
+    return estados_validos
+
+
+def registrar_etapa_historico(
+    historico,
+    numero_etapa,
+    no_atual,
+    open_list,
+    closed_list,
+    closed_ordem,
+    melhor_g,
+):
+    """Registra um histórico resumido da expansão atual."""
+    historico.append(
+        {
+            "numero_etapa": numero_etapa,
+            "estado_atual": no_atual.estado,
+            "acao": no_atual.acao,
+            "g": no_atual.g,
+            "h": no_atual.h,
+            "f": no_atual.f,
+            "open_resumida": listar_open_validos(open_list, melhor_g, closed_list)[:10],
+            "closed_resumida": closed_ordem[-10:],
+            "quantidade_open": len(listar_open_validos(open_list, melhor_g, closed_list)),
+            "quantidade_closed": len(closed_list),
+        }
+    )
+
+
 def resolver_astar(
     estado_inicial,
     estado_objetivo,
@@ -99,9 +147,11 @@ def resolver_astar(
     heappush(open_list, (no_inicial.f, next(contador), no_inicial))
 
     closed_list = set()
+    closed_ordem = []
     melhor_g = {estado_inicial: 0}
     historico = []
     estados_expandidos = 0
+    numero_etapa = 0
 
     while open_list:
         _, _, no_atual = heappop(open_list)
@@ -115,18 +165,18 @@ def resolver_astar(
 
         estados_expandidos += 1
 
-        if registrar_historico:
-            historico.append(
-                {
-                    "estado": no_atual.estado,
-                    "acao": no_atual.acao,
-                    "g": no_atual.g,
-                    "h": no_atual.h,
-                    "f": no_atual.f,
-                }
-            )
-
         if eh_objetivo(no_atual.estado, estado_objetivo):
+            if registrar_historico:
+                registrar_etapa_historico(
+                    historico=historico,
+                    numero_etapa=numero_etapa,
+                    no_atual=no_atual,
+                    open_list=open_list,
+                    closed_list=closed_list,
+                    closed_ordem=closed_ordem,
+                    melhor_g=melhor_g,
+                )
+
             caminho = reconstruir_caminho(no_atual)
             return criar_resultado(
                 encontrou_solucao=True,
@@ -138,6 +188,7 @@ def resolver_astar(
             )
 
         closed_list.add(no_atual.estado)
+        closed_ordem.append(no_atual.estado)
 
         for acao, estado_sucessor in gerar_sucessores(no_atual.estado):
             novo_g = no_atual.g + 1
@@ -147,6 +198,7 @@ def resolver_astar(
 
             if estado_sucessor in closed_list:
                 closed_list.remove(estado_sucessor)
+                closed_ordem = [estado for estado in closed_ordem if estado != estado_sucessor]
 
             novo_h = funcao_heuristica(estado_sucessor, estado_objetivo)
             novo_no = NoBusca(
@@ -160,6 +212,19 @@ def resolver_astar(
 
             melhor_g[estado_sucessor] = novo_g
             heappush(open_list, (novo_no.f, next(contador), novo_no))
+
+        if registrar_historico:
+            registrar_etapa_historico(
+                historico=historico,
+                numero_etapa=numero_etapa,
+                no_atual=no_atual,
+                open_list=open_list,
+                closed_list=closed_list,
+                closed_ordem=closed_ordem,
+                melhor_g=melhor_g,
+            )
+
+        numero_etapa += 1
 
     return criar_resultado(
         encontrou_solucao=False,
