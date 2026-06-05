@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""ETAPAS 8 E 9: interface gráfica em Tkinter com navegação e animação do histórico."""
+"""ETAPAS 8, 9 E 10: interface gráfica em Tkinter com navegação, animação e comparação."""
 
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -12,27 +12,48 @@ TITULO_PROJETO = "AGENTE A* — QUEBRA-CABEÇA DE 8 PEÇAS"
 ESTADO_INICIAL = (1, 2, 3, 4, 0, 6, 7, 5, 8)
 INTERVALO_AUTOMATICO_MS = 1000
 
-COR_FUNDO = "#f3efe7"
-COR_TEXTO = "#2b241e"
-COR_PECA = "#d9c7b0"
-COR_VAZIO = "#fbf7ef"
-COR_DESTAQUE = "#e8b84a"
-COR_DESTAQUE_VAZIO = "#f6de8b"
-COR_DESTAQUE_ACAO = "#8f4e18"
+COR_FUNDO = "#f4efe6"
+COR_TEXTO = "#2a231d"
+COR_PECA = "#dac6ad"
+COR_VAZIO = "#fbf8f2"
+COR_DESTAQUE = "#e6bc59"
+COR_DESTAQUE_VAZIO = "#f6df95"
+COR_ACAO = "#8e4f1a"
 
 HEURISTICAS_DISPONIVEIS = {
-    "Distância de Manhattan (admissível)": distancia_manhattan,
-    "2 × Distância de Manhattan (não admissível)": distancia_manhattan_nao_admissivel,
+    "manhattan": {
+        "titulo": "Distância de Manhattan admissível",
+        "funcao": distancia_manhattan,
+    },
+    "manhattan_x2": {
+        "titulo": "Distância de Manhattan multiplicada por 2",
+        "funcao": distancia_manhattan_nao_admissivel,
+    },
 }
 
 
 def formatar_tabuleiro_em_bloco(estado):
-    """Converte um estado em texto com três linhas."""
+    """Converte um estado em texto de três linhas."""
     linhas = []
     for indice in range(0, 9, 3):
         linha = estado[indice:indice + 3]
         linhas.append(" ".join(str(valor) for valor in linha))
     return "\n".join(linhas)
+
+
+def resumir_resultado_comparativo(chave_heuristica, resultado):
+    """Monta o resumo textual para a área comparativa."""
+    titulo = HEURISTICAS_DISPONIVEIS[chave_heuristica]["titulo"]
+    custo_total = resultado["custo_total"] if resultado["custo_total"] is not None else "—"
+    quantidade_movimentos = custo_total
+
+    return (
+        f"Heurística utilizada: {titulo}\n"
+        f"Custo total: {custo_total}\n"
+        f"Quantidade de movimentos: {quantidade_movimentos}\n"
+        f"Estados expandidos: {resultado['estados_expandidos']}\n"
+        f"Quantidade de etapas registradas: {len(resultado['historico'])}"
+    )
 
 
 class InterfaceAStar:
@@ -41,17 +62,15 @@ class InterfaceAStar:
     def __init__(self, janela):
         self.janela = janela
         self.janela.title(TITULO_PROJETO)
-        self.janela.geometry("1280x860")
-        self.janela.minsize(1180, 760)
+        self.janela.geometry("1180x760")
+        self.janela.minsize(980, 680)
         self.janela.configure(bg=COR_FUNDO)
 
         self.resultado_busca = None
         self.indice_etapa_atual = 0
         self.execucao_automatica_ativa = False
         self.identificador_after = None
-        self.heuristica_var = tk.StringVar(
-            value="Distância de Manhattan (admissível)"
-        )
+        self.heuristica_var = tk.StringVar(value="manhattan")
 
         self.labels_tabuleiro = []
         self.valores_info = {}
@@ -59,6 +78,9 @@ class InterfaceAStar:
         self.texto_open = None
         self.texto_closed = None
         self.texto_caminho = None
+        self.texto_comparacao_esquerda = None
+        self.texto_comparacao_direita = None
+        self.label_observacao = None
 
         self._criar_estilo()
         self._criar_layout()
@@ -73,30 +95,36 @@ class InterfaceAStar:
             "Painel.TLabelframe.Label",
             background=COR_FUNDO,
             foreground=COR_TEXTO,
-            font=("Georgia", 11, "bold"),
+            font=("Georgia", 10, "bold"),
         )
         estilo.configure(
             "Titulo.TLabel",
             background=COR_FUNDO,
             foreground=COR_TEXTO,
-            font=("Georgia", 18, "bold"),
+            font=("Georgia", 15, "bold"),
         )
         estilo.configure(
             "InfoNome.TLabel",
             background=COR_FUNDO,
-            foreground="#5a5148",
-            font=("Georgia", 10, "bold"),
+            foreground="#5b5248",
+            font=("Georgia", 9, "bold"),
         )
         estilo.configure(
             "InfoValor.TLabel",
             background=COR_FUNDO,
             foreground=COR_TEXTO,
-            font=("Consolas", 11),
+            font=("Consolas", 10),
         )
         estilo.configure(
             "Acao.TButton",
-            font=("Georgia", 10, "bold"),
-            padding=8,
+            font=("Georgia", 9, "bold"),
+            padding=6,
+        )
+        estilo.configure(
+            "Opcao.TRadiobutton",
+            background=COR_FUNDO,
+            foreground=COR_TEXTO,
+            font=("Georgia", 9),
         )
 
     def _criar_layout(self):
@@ -107,106 +135,118 @@ class InterfaceAStar:
             style="Titulo.TLabel",
             anchor="center",
         )
-        titulo.pack(fill="x", padx=18, pady=(14, 8))
+        titulo.pack(fill="x", padx=14, pady=(10, 6))
 
         corpo = tk.Frame(self.janela, bg=COR_FUNDO)
-        corpo.pack(fill="both", expand=True, padx=18, pady=(0, 18))
+        corpo.pack(fill="both", expand=True, padx=14, pady=(0, 14))
         corpo.grid_columnconfigure(0, weight=3)
         corpo.grid_columnconfigure(1, weight=2)
         corpo.grid_rowconfigure(0, weight=1)
 
         painel_esquerdo = tk.Frame(corpo, bg=COR_FUNDO)
-        painel_esquerdo.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
+        painel_esquerdo.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
         painel_esquerdo.grid_columnconfigure(0, weight=1)
 
         painel_direito = tk.Frame(corpo, bg=COR_FUNDO)
         painel_direito.grid(row=0, column=1, sticky="nsew")
         painel_direito.grid_columnconfigure(0, weight=1)
-        painel_direito.grid_rowconfigure(0, weight=1)
-        painel_direito.grid_rowconfigure(1, weight=1)
-        painel_direito.grid_rowconfigure(2, weight=1)
+        for linha in range(4):
+            painel_direito.grid_rowconfigure(linha, weight=1)
 
         self._criar_painel_tabuleiro_e_heuristica(painel_esquerdo)
         self._criar_painel_informacoes(painel_esquerdo)
         self._criar_painel_controles(painel_esquerdo)
 
-        self.texto_open = self._criar_painel_texto(painel_direito, "Open List resumida", 0)
-        self.texto_closed = self._criar_painel_texto(painel_direito, "Closed List resumida", 1)
-        self.texto_caminho = self._criar_painel_texto(painel_direito, "Caminho final", 2)
+        self.texto_open = self._criar_painel_texto(
+            painel_direito,
+            "Open List resumida",
+            "Mostra os próximos estados que ainda podem ser explorados pela busca.",
+            0,
+            8,
+        )
+        self.texto_closed = self._criar_painel_texto(
+            painel_direito,
+            "Closed List resumida",
+            "Mostra os estados que já foram expandidos e analisados pelo algoritmo.",
+            1,
+            8,
+        )
+        self._criar_painel_comparacao(painel_direito, 2)
+        self.texto_caminho = self._criar_painel_texto(
+            painel_direito,
+            "Caminho final",
+            "Apresenta a sequência de passos da solução encontrada até o estado objetivo.",
+            3,
+            8,
+        )
 
     def _criar_painel_tabuleiro_e_heuristica(self, container):
-        """Cria o tabuleiro visual, a seleção da heurística e o destaque do movimento."""
+        """Cria o tabuleiro visual e a seleção da heurística."""
         quadro = ttk.LabelFrame(
             container,
             text="Tabuleiro e heurística",
             style="Painel.TLabelframe",
         )
-        quadro.grid(row=0, column=0, sticky="nsew", pady=(0, 12))
+        quadro.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
         quadro.grid_columnconfigure(0, weight=1)
-        quadro.grid_columnconfigure(1, weight=1)
 
         area_tabuleiro = tk.Frame(quadro, bg=COR_FUNDO)
-        area_tabuleiro.grid(row=0, column=0, padx=16, pady=16, sticky="nw")
+        area_tabuleiro.grid(row=0, column=0, padx=12, pady=(10, 6), sticky="w")
 
         for indice in range(9):
             linha = indice // 3
             coluna = indice % 3
             label = tk.Label(
                 area_tabuleiro,
-                width=4,
-                height=2,
+                width=3,
+                height=1,
                 relief="ridge",
                 borderwidth=2,
-                font=("Georgia", 24, "bold"),
+                font=("Georgia", 20, "bold"),
                 bg=COR_PECA,
                 fg=COR_TEXTO,
+                padx=12,
+                pady=10,
             )
             label.grid(row=linha, column=coluna, padx=4, pady=4, sticky="nsew")
             self.labels_tabuleiro.append(label)
 
-        area_lateral = tk.Frame(quadro, bg=COR_FUNDO)
-        area_lateral.grid(row=0, column=1, padx=12, pady=16, sticky="nsew")
-        area_lateral.grid_columnconfigure(0, weight=1)
+        area_opcoes = tk.Frame(quadro, bg=COR_FUNDO)
+        area_opcoes.grid(row=1, column=0, padx=12, pady=(0, 10), sticky="ew")
+        area_opcoes.grid_columnconfigure(0, weight=1)
 
         ttk.Label(
-            area_lateral,
+            area_opcoes,
             text="Seleção da heurística",
             style="InfoNome.TLabel",
-        ).grid(row=0, column=0, sticky="w", pady=(0, 6))
+        ).grid(row=0, column=0, sticky="w", pady=(0, 4))
 
-        combo_heuristica = ttk.Combobox(
-            area_lateral,
-            textvariable=self.heuristica_var,
-            values=list(HEURISTICAS_DISPONIVEIS.keys()),
-            state="readonly",
-            font=("Georgia", 11),
-        )
-        combo_heuristica.grid(row=1, column=0, sticky="ew")
+        ttk.Radiobutton(
+            area_opcoes,
+            text="Distância de Manhattan admissível",
+            variable=self.heuristica_var,
+            value="manhattan",
+            style="Opcao.TRadiobutton",
+        ).grid(row=1, column=0, sticky="w", pady=2)
+
+        ttk.Radiobutton(
+            area_opcoes,
+            text="Distância de Manhattan multiplicada por 2",
+            variable=self.heuristica_var,
+            value="manhattan_x2",
+            style="Opcao.TRadiobutton",
+        ).grid(row=2, column=0, sticky="w", pady=2)
 
         self.label_movimento_destacado = tk.Label(
-            area_lateral,
+            area_opcoes,
             text="Movimento destacado: aguardando início",
             justify="left",
-            wraplength=260,
+            wraplength=420,
             bg=COR_FUNDO,
-            fg=COR_DESTAQUE_ACAO,
-            font=("Georgia", 12, "bold"),
+            fg=COR_ACAO,
+            font=("Georgia", 11, "bold"),
         )
-        self.label_movimento_destacado.grid(row=2, column=0, sticky="w", pady=(18, 8))
-
-        descricao = (
-            "A interface apenas consome o histórico já registrado pela busca.\n"
-            "Use os controles para navegar manualmente ou executar a animação."
-        )
-        tk.Label(
-            area_lateral,
-            text=descricao,
-            justify="left",
-            wraplength=260,
-            bg=COR_FUNDO,
-            fg="#5a5148",
-            font=("Georgia", 10),
-        ).grid(row=3, column=0, sticky="w")
+        self.label_movimento_destacado.grid(row=3, column=0, sticky="w", pady=(10, 4))
 
     def _criar_painel_informacoes(self, container):
         """Cria o painel com os dados resumidos da etapa atual."""
@@ -215,7 +255,7 @@ class InterfaceAStar:
             text="Painel de informações",
             style="Painel.TLabelframe",
         )
-        quadro.grid(row=1, column=0, sticky="nsew", pady=(0, 12))
+        quadro.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
         quadro.grid_columnconfigure(1, weight=1)
 
         campos = [
@@ -235,14 +275,14 @@ class InterfaceAStar:
                 quadro,
                 text=f"{nome_campo}:",
                 style="InfoNome.TLabel",
-            ).grid(row=linha, column=0, sticky="w", padx=14, pady=6)
+            ).grid(row=linha, column=0, sticky="w", padx=12, pady=4)
 
             valor = ttk.Label(
                 quadro,
                 text="—",
                 style="InfoValor.TLabel",
             )
-            valor.grid(row=linha, column=1, sticky="w", padx=(0, 14), pady=6)
+            valor.grid(row=linha, column=1, sticky="w", padx=(0, 12), pady=4)
             self.valores_info[nome_campo] = valor
 
     def _criar_painel_controles(self, container):
@@ -261,6 +301,7 @@ class InterfaceAStar:
             ("Executar automático", self.executar_automatico),
             ("Pausar", self.pausar_execucao),
             ("Reiniciar", self.reiniciar),
+            ("Comparar heurísticas", self.comparar_heuristicas),
         ]
 
         for indice, (texto, comando) in enumerate(botoes):
@@ -273,57 +314,128 @@ class InterfaceAStar:
             botao.grid(
                 row=indice // 3,
                 column=indice % 3,
-                padx=8,
-                pady=10,
+                padx=6,
+                pady=8,
                 sticky="ew",
             )
             quadro.grid_columnconfigure(indice % 3, weight=1)
 
-    def _criar_painel_texto(self, container, titulo, linha):
+    def _criar_painel_texto(self, container, titulo, descricao, linha, altura):
         """Cria um painel de texto com rolagem vertical."""
         quadro = ttk.LabelFrame(
             container,
             text=titulo,
             style="Painel.TLabelframe",
         )
-        quadro.grid(row=linha, column=0, sticky="nsew", pady=(0, 12) if linha < 2 else 0)
-        quadro.grid_rowconfigure(0, weight=1)
+        quadro.grid(row=linha, column=0, sticky="nsew", pady=(0, 10) if linha < 3 else 0)
+        quadro.grid_rowconfigure(1, weight=1)
         quadro.grid_columnconfigure(0, weight=1)
+
+        label_descricao = tk.Label(
+            quadro,
+            text=descricao,
+            justify="left",
+            wraplength=380,
+            bg=COR_FUNDO,
+            fg="#5a5148",
+            font=("Georgia", 9),
+        )
+        label_descricao.grid(row=0, column=0, columnspan=2, sticky="w", padx=8, pady=(6, 2))
 
         texto = tk.Text(
             quadro,
             wrap="word",
-            height=10,
-            font=("Consolas", 10),
+            height=altura,
+            font=("Consolas", 9),
             bg="#fffdf8",
             fg=COR_TEXTO,
             relief="flat",
-            padx=10,
-            pady=10,
+            padx=8,
+            pady=8,
         )
-        texto.grid(row=0, column=0, sticky="nsew")
+        texto.grid(row=1, column=0, sticky="nsew")
 
         barra = ttk.Scrollbar(quadro, orient="vertical", command=texto.yview)
-        barra.grid(row=0, column=1, sticky="ns")
+        barra.grid(row=1, column=1, sticky="ns")
         texto.configure(yscrollcommand=barra.set, state="disabled")
+        return texto
+
+    def _criar_painel_comparacao(self, container, linha):
+        """Cria a área comparativa com resultados lado a lado."""
+        quadro = ttk.LabelFrame(
+            container,
+            text="Área comparativa",
+            style="Painel.TLabelframe",
+        )
+        quadro.grid(row=linha, column=0, sticky="nsew", pady=(0, 10))
+        quadro.grid_columnconfigure(0, weight=1)
+        quadro.grid_columnconfigure(1, weight=1)
+        quadro.grid_rowconfigure(1, weight=1)
+
+        label_descricao = tk.Label(
+            quadro,
+            text=(
+                "Compara lado a lado os resultados das duas heurísticas, "
+                "incluindo custo, movimentos e estados expandidos."
+            ),
+            justify="left",
+            wraplength=420,
+            bg=COR_FUNDO,
+            fg="#5a5148",
+            font=("Georgia", 9),
+        )
+        label_descricao.grid(row=0, column=0, columnspan=2, sticky="w", padx=8, pady=(6, 2))
+
+        self.texto_comparacao_esquerda = self._criar_texto_interno(quadro, 0, 1)
+        self.texto_comparacao_direita = self._criar_texto_interno(quadro, 1, 1)
+
+        self.label_observacao = tk.Label(
+            quadro,
+            text="As observações comparativas aparecerão após a execução da comparação.",
+            justify="left",
+            wraplength=420,
+            bg=COR_FUNDO,
+            fg="#5a5148",
+            font=("Georgia", 9),
+        )
+        self.label_observacao.grid(row=2, column=0, columnspan=2, sticky="w", padx=8, pady=(8, 2))
+
+    def _criar_texto_interno(self, container, coluna, linha):
+        """Cria um painel de texto interno da comparação."""
+        texto = tk.Text(
+            container,
+            wrap="word",
+            height=7,
+            font=("Consolas", 9),
+            bg="#fffdf8",
+            fg=COR_TEXTO,
+            relief="flat",
+            padx=8,
+            pady=8,
+        )
+        texto.grid(row=linha, column=coluna, sticky="nsew", padx=(0, 4) if coluna == 0 else (4, 0))
+        texto.configure(state="disabled")
         return texto
 
     def _reiniciar_interface_visual(self):
         """Restaura a interface para o estado inicial visual."""
         self._atualizar_tabuleiro(ESTADO_INICIAL, set())
-        self.label_movimento_destacado.config(
-            text="Movimento destacado: aguardando início"
-        )
+        self.label_movimento_destacado.config(text="Movimento destacado: aguardando início")
 
         for nome_campo, label in self.valores_info.items():
             if nome_campo == "Heurística selecionada":
-                label.config(text=self.heuristica_var.get())
+                label.config(text=self._titulo_heuristica_atual())
             else:
                 label.config(text="—")
 
         self._preencher_texto(self.texto_open, "A Open List resumida aparecerá após iniciar a busca.")
         self._preencher_texto(self.texto_closed, "A Closed List resumida aparecerá após iniciar a busca.")
         self._preencher_texto(self.texto_caminho, "O caminho final será exibido após a execução.")
+        self._preencher_texto(self.texto_comparacao_esquerda, "Resultado da heurística 1 aparecerá aqui.")
+        self._preencher_texto(self.texto_comparacao_direita, "Resultado da heurística 2 aparecerá aqui.")
+        self.label_observacao.config(
+            text="As observações comparativas aparecerão após a execução da comparação."
+        )
 
     def _preencher_texto(self, widget_texto, conteudo):
         """Atualiza o conteúdo de um painel de texto."""
@@ -331,6 +443,10 @@ class InterfaceAStar:
         widget_texto.delete("1.0", tk.END)
         widget_texto.insert("1.0", conteudo)
         widget_texto.config(state="disabled")
+
+    def _titulo_heuristica_atual(self):
+        """Retorna o título da heurística atualmente selecionada."""
+        return HEURISTICAS_DISPONIVEIS[self.heuristica_var.get()]["titulo"]
 
     def _atualizar_tabuleiro(self, estado, indices_destacados):
         """Atualiza o tabuleiro visual e destaca as posições alteradas."""
@@ -361,10 +477,8 @@ class InterfaceAStar:
         """Retorna o estado da etapa anterior para calcular o destaque do movimento."""
         if not self.resultado_busca or not self.resultado_busca["historico"]:
             return None
-
         if self.indice_etapa_atual == 0:
             return None
-
         return self.resultado_busca["historico"][self.indice_etapa_atual - 1]["estado_atual"]
 
     def _calcular_indices_destacados(self, estado_atual):
@@ -375,8 +489,8 @@ class InterfaceAStar:
 
         return {
             indice
-            for indice, (valor_anterior, valor_atual) in enumerate(zip(estado_anterior, estado_atual))
-            if valor_anterior != valor_atual
+            for indice, (anterior, atual) in enumerate(zip(estado_anterior, estado_atual))
+            if anterior != atual
         }
 
     def _atualizar_info_etapa(self):
@@ -394,10 +508,8 @@ class InterfaceAStar:
         self.valores_info["Estados expandidos"].config(text=str(item["numero_etapa"] + 1))
         self.valores_info["Quantidade de estados na Open List"].config(text=str(item["quantidade_open"]))
         self.valores_info["Quantidade de estados na Closed List"].config(text=str(item["quantidade_closed"]))
-        self.valores_info["Heurística selecionada"].config(text=self.heuristica_var.get())
-        self.label_movimento_destacado.config(
-            text=f"Movimento destacado: {descricao_acao}"
-        )
+        self.valores_info["Heurística selecionada"].config(text=self._titulo_heuristica_atual())
+        self.label_movimento_destacado.config(text=f"Movimento destacado: {descricao_acao}")
 
     def _formatar_lista_resumida(self, estados):
         """Transforma uma lista de estados em texto legível."""
@@ -424,10 +536,7 @@ class InterfaceAStar:
             return
 
         if not self.resultado_busca["encontrou_solucao"]:
-            self._preencher_texto(
-                self.texto_caminho,
-                f"Erro: {self.resultado_busca['mensagem']}",
-            )
+            self._preencher_texto(self.texto_caminho, f"Erro: {self.resultado_busca['mensagem']}")
             return
 
         blocos = []
@@ -453,27 +562,27 @@ class InterfaceAStar:
         self._atualizar_paineis_resumidos()
         self._atualizar_painel_caminho()
 
-    def iniciar_busca(self):
-        """Executa a busca e prepara a navegação do histórico."""
-        self.pausar_execucao()
-
-        nome_heuristica = self.heuristica_var.get()
-        funcao_heuristica = HEURISTICAS_DISPONIVEIS[nome_heuristica]
-
-        self.resultado_busca = resolver_astar(
+    def _executar_busca_por_chave(self, chave_heuristica):
+        """Executa a busca usando a heurística indicada."""
+        funcao_heuristica = HEURISTICAS_DISPONIVEIS[chave_heuristica]["funcao"]
+        return resolver_astar(
             estado_inicial=ESTADO_INICIAL,
             estado_objetivo=ESTADO_OBJETIVO,
             funcao_heuristica=funcao_heuristica,
             registrar_historico=True,
         )
 
+    def iniciar_busca(self):
+        """Executa a busca da heurística atualmente selecionada."""
+        self.pausar_execucao()
+        self.resultado_busca = self._executar_busca_por_chave(self.heuristica_var.get())
         self.indice_etapa_atual = 0
         self._atualizar_painel_caminho()
 
         if not self.resultado_busca["historico"]:
             self._preencher_texto(self.texto_open, "Sem histórico disponível para este caso.")
             self._preencher_texto(self.texto_closed, "Sem histórico disponível para este caso.")
-            self.valores_info["Heurística selecionada"].config(text=nome_heuristica)
+            self.valores_info["Heurística selecionada"].config(text=self._titulo_heuristica_atual())
             messagebox.showerror("Busca A*", self.resultado_busca["mensagem"])
             return
 
@@ -555,6 +664,31 @@ class InterfaceAStar:
         self.resultado_busca = None
         self.indice_etapa_atual = 0
         self._reiniciar_interface_visual()
+
+    def comparar_heuristicas(self):
+        """Executa as duas heurísticas e mostra os resultados lado a lado."""
+        self.pausar_execucao()
+
+        resultado_manhattan = self._executar_busca_por_chave("manhattan")
+        resultado_manhattan_x2 = self._executar_busca_por_chave("manhattan_x2")
+
+        self._preencher_texto(
+            self.texto_comparacao_esquerda,
+            resumir_resultado_comparativo("manhattan", resultado_manhattan),
+        )
+        self._preencher_texto(
+            self.texto_comparacao_direita,
+            resumir_resultado_comparativo("manhattan_x2", resultado_manhattan_x2),
+        )
+
+        observacao = (
+            "Observações:\n"
+            "• A heurística admissível não superestima o custo real.\n"
+            "• A heurística não admissível pode superestimar o custo.\n"
+            "• A heurística não admissível não garante a melhor solução.\n"
+            "• Dependendo do tabuleiro utilizado, as duas heurísticas podem encontrar o mesmo caminho."
+        )
+        self.label_observacao.config(text=observacao)
 
 
 def executar_interface():
