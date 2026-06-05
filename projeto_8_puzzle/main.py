@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""ETAPAS 1, 2 E 3: estrutura inicial, validação dos estados e movimentos possíveis."""
+"""ETAPAS 1, 2, 3 E 4: estrutura inicial, estados, movimentos e heurísticas."""
 
 import sys
 
@@ -14,6 +14,7 @@ from estado import (
     possui_valores_validos,
     validar_estado,
 )
+from heuristicas import distancia_manhattan, distancia_manhattan_nao_admissivel
 
 TITULO = "AGENTE A* — QUEBRA-CABEÇA DE 8 PEÇAS"
 LARGURA = 40
@@ -31,6 +32,16 @@ def exibir_sucessores(estado):
         print()
         print(f"{descricao}:")
         print(formatar_estado(novo_estado))
+
+
+def exibir_heuristicas(estado, objetivo):
+    """Mostra no terminal os valores das heurísticas para o estado informado."""
+    print("Heurísticas do estado inicial:")
+    print(f"- Distância de Manhattan: {distancia_manhattan(estado, objetivo)}")
+    print(
+        f"- Distância de Manhattan não admissível: "
+        f"{distancia_manhattan_nao_admissivel(estado, objetivo)}"
+    )
 
 
 def main():
@@ -51,7 +62,7 @@ def main():
     print(formatar_estado(ESTADO_OBJETIVO))
     print()
     print("Testes manuais:")
-    # Verificações das etapas 2 e 3.
+    # Verificações das etapas 2, 3 e 4.
     print(f"- Estado inicial válido? {validar_estado(ESTADO_INICIAL)}")
     print(f"- Possui nove posições? {possui_nove_posicoes(ESTADO_INICIAL)}")
     print(f"- Possui valores de 0 a 8 sem repetição? {possui_valores_validos(ESTADO_INICIAL)}")
@@ -63,6 +74,8 @@ def main():
     print(f"- Quantidade de sucessores válidos: {len(gerar_sucessores(ESTADO_INICIAL))}")
     print()
     exibir_sucessores(ESTADO_INICIAL)
+    print()
+    exibir_heuristicas(ESTADO_INICIAL, ESTADO_OBJETIVO)
 
 
 if __name__ == "__main__":
