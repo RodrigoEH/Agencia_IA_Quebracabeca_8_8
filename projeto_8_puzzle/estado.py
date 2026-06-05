@@ -1,4 +1,4 @@
-"""ETAPA 2: representação e validação dos estados do quebra-cabeça de 8 peças."""
+"""ETAPAS 2 E 3: representação, validação e geração de sucessores do quebra-cabeça de 8 peças."""
 
 ESTADO_OBJETIVO = (1, 2, 3, 4, 5, 6, 7, 8, 0)
 
@@ -77,3 +77,40 @@ def contar_inversoes(estado):
 def eh_solucionavel(estado):
     """Determina se a configuração pode ser resolvida pela paridade das inversões."""
     return contar_inversoes(estado) % 2 == 0
+
+
+def trocar_posicoes(estado, indice_a, indice_b):
+    """Cria um novo estado trocando duas posições."""
+    lista_estado = list(estado)
+    lista_estado[indice_a], lista_estado[indice_b] = lista_estado[indice_b], lista_estado[indice_a]
+    return tuple(lista_estado)
+
+
+def gerar_sucessores(estado):
+    """Gera apenas os movimentos válidos a partir do estado atual."""
+    if not validar_estado(estado):
+        raise ValueError("Estado inválido: não foi possível gerar sucessores.")
+
+    indice_vazio = localizar_vazio(estado)
+    linha = indice_vazio // 3
+    coluna = indice_vazio % 3
+    sucessores = []
+
+    # Cada ação troca o espaço vazio com uma peça vizinha válida.
+    if linha > 0:
+        novo_estado = trocar_posicoes(estado, indice_vazio, indice_vazio - 3)
+        sucessores.append(("Mover vazio para cima", novo_estado))
+
+    if linha < 2:
+        novo_estado = trocar_posicoes(estado, indice_vazio, indice_vazio + 3)
+        sucessores.append(("Mover vazio para baixo", novo_estado))
+
+    if coluna > 0:
+        novo_estado = trocar_posicoes(estado, indice_vazio, indice_vazio - 1)
+        sucessores.append(("Mover vazio para esquerda", novo_estado))
+
+    if coluna < 2:
+        novo_estado = trocar_posicoes(estado, indice_vazio, indice_vazio + 1)
+        sucessores.append(("Mover vazio para direita", novo_estado))
+
+    return sucessores
