@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""ETAPAS 1, 2, 3 E 4: estrutura inicial, estados, movimentos e heurísticas."""
+"""ETAPAS 1, 2, 3, 4 E 5: estrutura, estados, movimentos, heurísticas e busca A*."""
 
 import sys
 
+from agente_astar import resolver_astar
 from estado import (
     ESTADO_OBJETIVO,
     eh_objetivo,
@@ -44,6 +45,27 @@ def exibir_heuristicas(estado, objetivo):
     )
 
 
+def exibir_resultado_busca(resultado):
+    """Mostra no terminal o resumo da execução do algoritmo A*."""
+    print("Resultado da busca A*:")
+    print(f"- Encontrou solução? {resultado['encontrou_solucao']}")
+    print(f"- Mensagem: {resultado['mensagem']}")
+    print(f"- Custo total: {resultado['custo_total']}")
+    print(f"- Estados expandidos: {resultado['estados_expandidos']}")
+
+    if not resultado["encontrou_solucao"]:
+        return
+
+    print()
+    print("Caminho solução:")
+    for indice, passo in enumerate(resultado["caminho"]):
+        descricao_acao = passo["acao"] or "Estado inicial"
+        print()
+        print(f"Passo {indice}: {descricao_acao}")
+        print(formatar_estado(passo["estado"]))
+        print(f"g={passo['g']}, h={passo['h']}, f={passo['f']}")
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -62,7 +84,7 @@ def main():
     print(formatar_estado(ESTADO_OBJETIVO))
     print()
     print("Testes manuais:")
-    # Verificações das etapas 2, 3 e 4.
+    # Verificações das etapas 2, 3, 4 e 5.
     print(f"- Estado inicial válido? {validar_estado(ESTADO_INICIAL)}")
     print(f"- Possui nove posições? {possui_nove_posicoes(ESTADO_INICIAL)}")
     print(f"- Possui valores de 0 a 8 sem repetição? {possui_valores_validos(ESTADO_INICIAL)}")
@@ -76,6 +98,15 @@ def main():
     exibir_sucessores(ESTADO_INICIAL)
     print()
     exibir_heuristicas(ESTADO_INICIAL, ESTADO_OBJETIVO)
+    print()
+
+    resultado = resolver_astar(
+        estado_inicial=ESTADO_INICIAL,
+        estado_objetivo=ESTADO_OBJETIVO,
+        funcao_heuristica=distancia_manhattan,
+        registrar_historico=True,
+    )
+    exibir_resultado_busca(resultado)
 
 
 if __name__ == "__main__":
