@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
-"""ETAPAS 6 E 7: exibição do resultado da busca A* e histórico resumido pelo terminal."""
+"""ETAPAS 6, 7 E 12: execução no terminal com solução, histórico e estado embaralhado."""
 
 import sys
 
 from agente_astar import resolver_astar
 from estado import ESTADO_OBJETIVO, formatar_estado
+from exemplos import ESTADO_INICIAL_EXEMPLO, gerar_estado_embaralhado
 from heuristicas import distancia_manhattan
 
 TITULO = "AGENTE A* — QUEBRA-CABEÇA DE 8 PEÇAS"
 LARGURA = 40
-
-ESTADO_INICIAL = (1, 2, 3, 4, 0, 6, 7, 5, 8)
 
 
 def exibir_cabecalho():
@@ -21,14 +20,15 @@ def exibir_cabecalho():
     print(separador)
 
 
-def exibir_estados_principais():
-    """Mostra o estado inicial e o estado objetivo."""
+def perguntar_estado_embaralhado():
+    """Permite escolher entre o exemplo fixo e um estado embaralhado."""
     print()
-    print("Estado inicial:")
-    print(formatar_estado(ESTADO_INICIAL))
-    print()
-    print("Estado objetivo:")
-    print(formatar_estado(ESTADO_OBJETIVO))
+    try:
+        resposta = input("Deseja embaralhar o estado inicial para testar outro caso? (S/n): ")
+    except EOFError:
+        return True
+
+    return resposta.strip().lower() not in {"n", "nao", "não"}
 
 
 def perguntar_exibicao_historico():
@@ -40,6 +40,26 @@ def perguntar_exibicao_historico():
         return False
 
     return resposta.strip().lower() in {"s", "sim"}
+
+
+def obter_estado_inicial():
+    """Escolhe o estado inicial que será usado na execução atual."""
+    if perguntar_estado_embaralhado():
+        return gerar_estado_embaralhado(movimentos=20), "Embaralhado automaticamente"
+
+    return ESTADO_INICIAL_EXEMPLO, "Exemplo fixo"
+
+
+def exibir_estados_principais(estado_inicial, origem_estado):
+    """Mostra o estado inicial utilizado e o objetivo da busca."""
+    print()
+    print(f"Tipo de estado inicial: {origem_estado}")
+    print()
+    print("Estado inicial:")
+    print(formatar_estado(estado_inicial))
+    print()
+    print("Estado objetivo:")
+    print(formatar_estado(ESTADO_OBJETIVO))
 
 
 def exibir_caminho_solucao(resultado):
@@ -113,11 +133,12 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8")
 
     exibir_cabecalho()
-    exibir_estados_principais()
+    estado_inicial, origem_estado = obter_estado_inicial()
+    exibir_estados_principais(estado_inicial, origem_estado)
     exibir_historico_detalhado = perguntar_exibicao_historico()
 
     resultado = resolver_astar(
-        estado_inicial=ESTADO_INICIAL,
+        estado_inicial=estado_inicial,
         estado_objetivo=ESTADO_OBJETIVO,
         funcao_heuristica=distancia_manhattan,
         registrar_historico=exibir_historico_detalhado,

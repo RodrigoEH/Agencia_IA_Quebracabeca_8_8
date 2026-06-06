@@ -4,7 +4,7 @@
 Agente A* para o Quebra-Cabeça de 8 Peças
 
 ## Integrantes
-Preencher com os nomes da equipe.
+Preencher com os nomes dos integrantes da equipe.
 
 ## Linguagem utilizada
 Python 3

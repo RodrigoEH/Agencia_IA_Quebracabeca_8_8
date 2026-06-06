@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-"""ETAPAS 8, 9 E 10: interface gráfica em Tkinter com navegação, animação e comparação."""
+"""ETAPAS 8, 9, 10 E EXTRA: interface gráfica com navegação, animação, comparação e embaralhamento."""
 
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 from agente_astar import resolver_astar
 from estado import ESTADO_OBJETIVO
+from exemplos import gerar_estado_embaralhado
 from heuristicas import distancia_manhattan, distancia_manhattan_nao_admissivel
 
 TITULO_PROJETO = "AGENTE A* — QUEBRA-CABEÇA DE 8 PEÇAS"
-ESTADO_INICIAL = (1, 2, 3, 4, 0, 6, 7, 5, 8)
 INTERVALO_AUTOMATICO_MS = 1000
 
 COR_FUNDO = "#f4efe6"
@@ -66,6 +66,7 @@ class InterfaceAStar:
         self.janela.minsize(980, 680)
         self.janela.configure(bg=COR_FUNDO)
 
+        self.estado_inicial_atual = gerar_estado_embaralhado(movimentos=20)
         self.resultado_busca = None
         self.indice_etapa_atual = 0
         self.execucao_automatica_ativa = False
@@ -75,6 +76,7 @@ class InterfaceAStar:
         self.labels_tabuleiro = []
         self.valores_info = {}
         self.label_movimento_destacado = None
+        self.label_estado_atual = None
         self.texto_open = None
         self.texto_closed = None
         self.texto_caminho = None
@@ -237,6 +239,17 @@ class InterfaceAStar:
             style="Opcao.TRadiobutton",
         ).grid(row=2, column=0, sticky="w", pady=2)
 
+        self.label_estado_atual = tk.Label(
+            area_opcoes,
+            text="Estado atual: embaralhado para teste",
+            justify="left",
+            wraplength=420,
+            bg=COR_FUNDO,
+            fg="#5b5248",
+            font=("Georgia", 10, "bold"),
+        )
+        self.label_estado_atual.grid(row=3, column=0, sticky="w", pady=(10, 2))
+
         self.label_movimento_destacado = tk.Label(
             area_opcoes,
             text="Movimento destacado: aguardando início",
@@ -246,7 +259,7 @@ class InterfaceAStar:
             fg=COR_ACAO,
             font=("Georgia", 11, "bold"),
         )
-        self.label_movimento_destacado.grid(row=3, column=0, sticky="w", pady=(10, 4))
+        self.label_movimento_destacado.grid(row=4, column=0, sticky="w", pady=(4, 4))
 
     def _criar_painel_informacoes(self, container):
         """Cria o painel com os dados resumidos da etapa atual."""
@@ -301,6 +314,7 @@ class InterfaceAStar:
             ("Executar automático", self.executar_automatico),
             ("Pausar", self.pausar_execucao),
             ("Reiniciar", self.reiniciar),
+            ("Embaralhar", self.embaralhar_estado),
             ("Comparar heurísticas", self.comparar_heuristicas),
         ]
 
@@ -419,7 +433,8 @@ class InterfaceAStar:
 
     def _reiniciar_interface_visual(self):
         """Restaura a interface para o estado inicial visual."""
-        self._atualizar_tabuleiro(ESTADO_INICIAL, set())
+        self._atualizar_tabuleiro(self.estado_inicial_atual, set())
+        self.label_estado_atual.config(text="Estado atual: embaralhado para teste")
         self.label_movimento_destacado.config(text="Movimento destacado: aguardando início")
 
         for nome_campo, label in self.valores_info.items():
@@ -566,7 +581,7 @@ class InterfaceAStar:
         """Executa a busca usando a heurística indicada."""
         funcao_heuristica = HEURISTICAS_DISPONIVEIS[chave_heuristica]["funcao"]
         return resolver_astar(
-            estado_inicial=ESTADO_INICIAL,
+            estado_inicial=self.estado_inicial_atual,
             estado_objetivo=ESTADO_OBJETIVO,
             funcao_heuristica=funcao_heuristica,
             registrar_historico=True,
@@ -659,8 +674,16 @@ class InterfaceAStar:
             self.identificador_after = None
 
     def reiniciar(self):
-        """Reinicia a execução e a visualização da interface."""
+        """Reinicia a execução e a visualização da interface mantendo o mesmo tabuleiro."""
         self.pausar_execucao()
+        self.resultado_busca = None
+        self.indice_etapa_atual = 0
+        self._reiniciar_interface_visual()
+
+    def embaralhar_estado(self):
+        """Gera um novo estado inicial embaralhado para testes."""
+        self.pausar_execucao()
+        self.estado_inicial_atual = gerar_estado_embaralhado(movimentos=20)
         self.resultado_busca = None
         self.indice_etapa_atual = 0
         self._reiniciar_interface_visual()
