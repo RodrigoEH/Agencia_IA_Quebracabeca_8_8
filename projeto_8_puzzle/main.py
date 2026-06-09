@@ -90,6 +90,24 @@ def exibir_erro(resultado):
     print(f"Estados expandidos: {resultado['estados_expandidos']}")
 
 
+def exibir_resumo_final(resultado):
+    """Repete no fim da execução um resumo claro do resultado obtido."""
+    print()
+    print("=" * LARGURA)
+    print("RESULTADO FINAL")
+    print("=" * LARGURA)
+
+    if resultado["encontrou_solucao"]:
+        print("Situação: solução encontrada com sucesso.")
+        print(f"Custo total: {resultado['custo_total']} movimentos")
+        print(f"Estados expandidos: {resultado['estados_expandidos']}")
+        print(f"Estado final alcançado: {resultado['caminho'][-1]['estado']}")
+    else:
+        print("Situação: nenhuma solução encontrada.")
+        print(f"Motivo: {resultado['mensagem']}")
+        print(f"Estados expandidos: {resultado['estados_expandidos']}")
+
+
 def exibir_lista_estados(titulo, estados):
     """Mostra uma lista resumida de estados no terminal."""
     print(titulo)
@@ -151,6 +169,8 @@ def main():
 
     if exibir_historico_detalhado:
         exibir_historico(resultado)
+
+    exibir_resumo_final(resultado)
 
 
 if __name__ == "__main__":

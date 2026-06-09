@@ -1,7 +1,7 @@
 
 # Projeto de Inteligência Artificial — Agente A* para o Quebra-Cabeça de 8 Peças
 
-Quero desenvolver um projeto em Python 3 para resolver o Quebra-Cabeça de 8 Peças utilizando o algoritmo A*.
+Desenvolver um projeto em Python 3 para resolver o Quebra-Cabeça de 8 Peças utilizando o algoritmo A*.
 
 O projeto deve ser desenvolvido gradualmente. Não implemente todas as etapas de uma vez. Em cada etapa:
 
