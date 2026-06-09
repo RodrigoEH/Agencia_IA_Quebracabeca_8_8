@@ -32,6 +32,45 @@ Para abrir a interface gráfica:
 python projeto_8_puzzle/interface.py
 ```
 
+## Como utilizar o sistema
+### Uso pelo terminal
+1. Execute o arquivo principal:
+
+```bash
+python projeto_8_puzzle/main.py
+```
+
+2. Escolha se deseja usar um estado inicial embaralhado ou o exemplo fixo.
+3. Escolha se deseja exibir o histórico detalhado das expansões.
+4. Observe no terminal:
+   - o estado inicial;
+   - o estado objetivo;
+   - a heurística utilizada;
+   - o caminho final da solução;
+   - o custo total;
+   - a quantidade de estados expandidos.
+
+### Uso pela interface gráfica
+1. Abra a interface:
+
+```bash
+python projeto_8_puzzle/interface.py
+```
+
+2. Selecione a heurística desejada.
+3. Clique em `Iniciar` para executar a busca.
+4. Use:
+   - `Próximo passo` para avançar manualmente;
+   - `Passo anterior` para voltar;
+   - `Executar automático` para animar;
+   - `Pausar` para parar a animação;
+   - `Reiniciar` para limpar a execução atual;
+   - `Embaralhar` para gerar um novo tabuleiro inicial;
+   - `Comparar heurísticas` para ver os resultados lado a lado.
+5. Use os modos:
+   - `Ver caminho final` para acompanhar apenas a solução correta;
+   - `Ver análise da busca` para observar os estados internos explorados pelo A*.
+
 ## Explicação da interface gráfica
 `Open List resumida`: mostra os próximos estados que ainda podem ser explorados pelo algoritmo A*.
 
