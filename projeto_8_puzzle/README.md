@@ -6,6 +6,16 @@ Agente A* para o Quebra-Cabeça de 8 Peças
 ## Integrantes
 Preencher com os nomes dos integrantes da equipe.
 
+## Orientação para grupos de desenvolvedores
+Este projeto está público.
+
+Isso significa que:
+
+- o código pode ser acessado pelos integrantes do grupo e por avaliadores;
+- o projeto pode ser estudado, executado e testado livremente;
+- novas melhorias podem ser feitas em equipe a partir desta base;
+- recomenda-se manter os créditos do grupo autor e registrar claramente futuras alterações.
+
 ## Linguagem utilizada
 Python 3
 

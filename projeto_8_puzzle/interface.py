@@ -68,10 +68,12 @@ class InterfaceAStar:
 
         self.estado_inicial_atual = gerar_estado_embaralhado(movimentos=20)
         self.resultado_busca = None
-        self.indice_etapa_atual = 0
+        self.indice_solucao_atual = 0
+        self.indice_analise_atual = 0
         self.execucao_automatica_ativa = False
         self.identificador_after = None
         self.heuristica_var = tk.StringVar(value="manhattan")
+        self.modo_visualizacao_var = tk.StringVar(value="solucao")
 
         self.labels_tabuleiro = []
         self.valores_info = {}
@@ -239,6 +241,30 @@ class InterfaceAStar:
             style="Opcao.TRadiobutton",
         ).grid(row=2, column=0, sticky="w", pady=2)
 
+        ttk.Label(
+            area_opcoes,
+            text="Modo de visualização",
+            style="InfoNome.TLabel",
+        ).grid(row=3, column=0, sticky="w", pady=(8, 4))
+
+        ttk.Radiobutton(
+            area_opcoes,
+            text="Ver caminho final",
+            variable=self.modo_visualizacao_var,
+            value="solucao",
+            style="Opcao.TRadiobutton",
+            command=self.alterar_para_modo_solucao,
+        ).grid(row=4, column=0, sticky="w", pady=2)
+
+        ttk.Radiobutton(
+            area_opcoes,
+            text="Ver análise da busca",
+            variable=self.modo_visualizacao_var,
+            value="analise",
+            style="Opcao.TRadiobutton",
+            command=self.alterar_para_modo_analise,
+        ).grid(row=5, column=0, sticky="w", pady=2)
+
         self.label_estado_atual = tk.Label(
             area_opcoes,
             text="Estado atual: embaralhado para teste",
@@ -248,7 +274,7 @@ class InterfaceAStar:
             fg="#5b5248",
             font=("Georgia", 10, "bold"),
         )
-        self.label_estado_atual.grid(row=3, column=0, sticky="w", pady=(10, 2))
+        self.label_estado_atual.grid(row=6, column=0, sticky="w", pady=(10, 2))
 
         self.label_movimento_destacado = tk.Label(
             area_opcoes,
@@ -259,7 +285,7 @@ class InterfaceAStar:
             fg=COR_ACAO,
             font=("Georgia", 11, "bold"),
         )
-        self.label_movimento_destacado.grid(row=4, column=0, sticky="w", pady=(4, 4))
+        self.label_movimento_destacado.grid(row=7, column=0, sticky="w", pady=(4, 4))
 
     def _criar_painel_informacoes(self, container):
         """Cria o painel com os dados resumidos da etapa atual."""
@@ -316,6 +342,7 @@ class InterfaceAStar:
             ("Reiniciar", self.reiniciar),
             ("Embaralhar", self.embaralhar_estado),
             ("Comparar heurísticas", self.comparar_heuristicas),
+            ("Ver análise da busca", self.alterar_para_modo_analise),
         ]
 
         for indice, (texto, comando) in enumerate(botoes):
@@ -433,6 +460,7 @@ class InterfaceAStar:
 
     def _reiniciar_interface_visual(self):
         """Restaura a interface para o estado inicial visual."""
+        self.modo_visualizacao_var.set("solucao")
         self._atualizar_tabuleiro(self.estado_inicial_atual, set())
         self.label_estado_atual.config(text="Estado atual: embaralhado para teste")
         self.label_movimento_destacado.config(text="Movimento destacado: aguardando início")
@@ -443,8 +471,14 @@ class InterfaceAStar:
             else:
                 label.config(text="—")
 
-        self._preencher_texto(self.texto_open, "A Open List resumida aparecerá após iniciar a busca.")
-        self._preencher_texto(self.texto_closed, "A Closed List resumida aparecerá após iniciar a busca.")
+        self._preencher_texto(
+            self.texto_open,
+            "A Open List resumida aparecerá no modo 'Ver análise da busca'.",
+        )
+        self._preencher_texto(
+            self.texto_closed,
+            "A Closed List resumida aparecerá no modo 'Ver análise da busca'.",
+        )
         self._preencher_texto(self.texto_caminho, "O caminho final será exibido após a execução.")
         self._preencher_texto(self.texto_comparacao_esquerda, "Resultado da heurística 1 aparecerá aqui.")
         self._preencher_texto(self.texto_comparacao_direita, "Resultado da heurística 2 aparecerá aqui.")
@@ -482,23 +516,39 @@ class InterfaceAStar:
                     relief="ridge",
                 )
 
+    def _modo_visualizacao_atual(self):
+        """Retorna o modo atual da interface."""
+        return self.modo_visualizacao_var.get()
+
     def _obter_item_historico_atual(self):
         """Retorna o item atual do histórico, quando disponível."""
         if not self.resultado_busca or not self.resultado_busca["historico"]:
             return None
-        return self.resultado_busca["historico"][self.indice_etapa_atual]
+        return self.resultado_busca["historico"][self.indice_analise_atual]
 
-    def _obter_estado_anterior(self):
-        """Retorna o estado da etapa anterior para calcular o destaque do movimento."""
-        if not self.resultado_busca or not self.resultado_busca["historico"]:
+    def _obter_item_solucao_atual(self):
+        """Retorna o passo atual do caminho solução, quando disponível."""
+        if not self.resultado_busca or not self.resultado_busca["caminho"]:
             return None
-        if self.indice_etapa_atual == 0:
-            return None
-        return self.resultado_busca["historico"][self.indice_etapa_atual - 1]["estado_atual"]
+        return self.resultado_busca["caminho"][self.indice_solucao_atual]
 
-    def _calcular_indices_destacados(self, estado_atual):
+    def _obter_estado_anterior(self, modo):
+        """Retorna o estado anterior conforme o modo de visualização."""
+        if not self.resultado_busca:
+            return None
+
+        if modo == "solucao":
+            if not self.resultado_busca["caminho"] or self.indice_solucao_atual == 0:
+                return None
+            return self.resultado_busca["caminho"][self.indice_solucao_atual - 1]["estado"]
+
+        if not self.resultado_busca["historico"] or self.indice_analise_atual == 0:
+            return None
+        return self.resultado_busca["historico"][self.indice_analise_atual - 1]["estado_atual"]
+
+    def _calcular_indices_destacados(self, estado_atual, modo):
         """Calcula quais posições mudaram em relação à etapa anterior."""
-        estado_anterior = self._obter_estado_anterior()
+        estado_anterior = self._obter_estado_anterior(modo)
         if estado_anterior is None:
             return set()
 
@@ -508,8 +558,29 @@ class InterfaceAStar:
             if anterior != atual
         }
 
-    def _atualizar_info_etapa(self):
-        """Mostra as informações da etapa atual no painel de dados."""
+    def _atualizar_info_solucao(self):
+        """Mostra os dados do passo atual do caminho final."""
+        passo = self._obter_item_solucao_atual()
+        if passo is None:
+            return
+
+        descricao_acao = passo["acao"] or "Estado inicial"
+        self.valores_info["Movimento atual"].config(text=descricao_acao)
+        self.valores_info["g(n)"].config(text=str(passo["g"]))
+        self.valores_info["h(n)"].config(text=str(passo["h"]))
+        self.valores_info["f(n)"].config(text=str(passo["f"]))
+        self.valores_info["Número da etapa"].config(
+            text=f"{self.indice_solucao_atual} de {len(self.resultado_busca['caminho']) - 1}"
+        )
+        self.valores_info["Estados expandidos"].config(text=str(self.resultado_busca["estados_expandidos"]))
+        self.valores_info["Quantidade de estados na Open List"].config(text="Ver análise da busca")
+        self.valores_info["Quantidade de estados na Closed List"].config(text="Ver análise da busca")
+        self.valores_info["Heurística selecionada"].config(text=self._titulo_heuristica_atual())
+        self.label_estado_atual.config(text="Estado atual: caminho final da solução")
+        self.label_movimento_destacado.config(text=f"Movimento destacado: {descricao_acao}")
+
+    def _atualizar_info_analise(self):
+        """Mostra os dados da etapa atual do histórico de expansão."""
         item = self._obter_item_historico_atual()
         if item is None:
             return
@@ -519,11 +590,14 @@ class InterfaceAStar:
         self.valores_info["g(n)"].config(text=str(item["g"]))
         self.valores_info["h(n)"].config(text=str(item["h"]))
         self.valores_info["f(n)"].config(text=str(item["f"]))
-        self.valores_info["Número da etapa"].config(text=str(item["numero_etapa"]))
+        self.valores_info["Número da etapa"].config(
+            text=f"{item['numero_etapa']} de {len(self.resultado_busca['historico']) - 1}"
+        )
         self.valores_info["Estados expandidos"].config(text=str(item["numero_etapa"] + 1))
         self.valores_info["Quantidade de estados na Open List"].config(text=str(item["quantidade_open"]))
         self.valores_info["Quantidade de estados na Closed List"].config(text=str(item["quantidade_closed"]))
         self.valores_info["Heurística selecionada"].config(text=self._titulo_heuristica_atual())
+        self.label_estado_atual.config(text="Estado atual: análise interna do A*")
         self.label_movimento_destacado.config(text=f"Movimento destacado: {descricao_acao}")
 
     def _formatar_lista_resumida(self, estados):
@@ -538,6 +612,19 @@ class InterfaceAStar:
 
     def _atualizar_paineis_resumidos(self):
         """Atualiza Open List e Closed List com base na etapa atual."""
+        if self._modo_visualizacao_atual() != "analise":
+            self._preencher_texto(
+                self.texto_open,
+                "No modo 'Ver caminho final', o tabuleiro mostra apenas a solução.\n\n"
+                "Use 'Ver análise da busca' para inspecionar a Open List.",
+            )
+            self._preencher_texto(
+                self.texto_closed,
+                "No modo 'Ver caminho final', o tabuleiro mostra apenas a solução.\n\n"
+                "Use 'Ver análise da busca' para inspecionar a Closed List.",
+            )
+            return
+
         item = self._obter_item_historico_atual()
         if item is None:
             return
@@ -567,13 +654,23 @@ class InterfaceAStar:
 
     def _mostrar_etapa_atual(self):
         """Atualiza tabuleiro, painéis e destaque visual da etapa atual."""
-        item = self._obter_item_historico_atual()
-        if item is None:
-            return
+        modo = self._modo_visualizacao_atual()
 
-        indices_destacados = self._calcular_indices_destacados(item["estado_atual"])
-        self._atualizar_tabuleiro(item["estado_atual"], indices_destacados)
-        self._atualizar_info_etapa()
+        if modo == "solucao":
+            passo = self._obter_item_solucao_atual()
+            if passo is None:
+                return
+            indices_destacados = self._calcular_indices_destacados(passo["estado"], modo)
+            self._atualizar_tabuleiro(passo["estado"], indices_destacados)
+            self._atualizar_info_solucao()
+        else:
+            item = self._obter_item_historico_atual()
+            if item is None:
+                return
+            indices_destacados = self._calcular_indices_destacados(item["estado_atual"], modo)
+            self._atualizar_tabuleiro(item["estado_atual"], indices_destacados)
+            self._atualizar_info_analise()
+
         self._atualizar_paineis_resumidos()
         self._atualizar_painel_caminho()
 
@@ -591,7 +688,9 @@ class InterfaceAStar:
         """Executa a busca da heurística atualmente selecionada."""
         self.pausar_execucao()
         self.resultado_busca = self._executar_busca_por_chave(self.heuristica_var.get())
-        self.indice_etapa_atual = 0
+        self.indice_solucao_atual = 0
+        self.indice_analise_atual = 0
+        self.modo_visualizacao_var.set("solucao")
         self._atualizar_painel_caminho()
 
         if not self.resultado_busca["historico"]:
@@ -612,20 +711,38 @@ class InterfaceAStar:
             self.iniciar_busca()
             return
 
+        if self._modo_visualizacao_atual() == "solucao":
+            if not self.resultado_busca["caminho"]:
+                return
+
+            if self.indice_solucao_atual < len(self.resultado_busca["caminho"]) - 1:
+                self.indice_solucao_atual += 1
+                self._mostrar_etapa_atual()
+            return
+
         if not self.resultado_busca["historico"]:
             return
 
-        if self.indice_etapa_atual < len(self.resultado_busca["historico"]) - 1:
-            self.indice_etapa_atual += 1
+        if self.indice_analise_atual < len(self.resultado_busca["historico"]) - 1:
+            self.indice_analise_atual += 1
             self._mostrar_etapa_atual()
 
     def passo_anterior(self):
         """Retorna manualmente para a etapa anterior registrada."""
-        if not self.resultado_busca or not self.resultado_busca["historico"]:
+        if not self.resultado_busca:
             return
 
-        if self.indice_etapa_atual > 0:
-            self.indice_etapa_atual -= 1
+        if self._modo_visualizacao_atual() == "solucao":
+            if self.indice_solucao_atual > 0:
+                self.indice_solucao_atual -= 1
+                self._mostrar_etapa_atual()
+            return
+
+        if not self.resultado_busca["historico"]:
+            return
+
+        if self.indice_analise_atual > 0:
+            self.indice_analise_atual -= 1
             self._mostrar_etapa_atual()
 
     def _executar_automatico_loop(self):
@@ -641,7 +758,12 @@ class InterfaceAStar:
             self.identificador_after = None
             return
 
-        if self.indice_etapa_atual >= len(self.resultado_busca["historico"]) - 1:
+        if self._modo_visualizacao_atual() == "solucao":
+            chegou_ao_fim = self.indice_solucao_atual >= len(self.resultado_busca["caminho"]) - 1
+        else:
+            chegou_ao_fim = self.indice_analise_atual >= len(self.resultado_busca["historico"]) - 1
+
+        if chegou_ao_fim:
             self.execucao_automatica_ativa = False
             self.identificador_after = None
             return
@@ -677,7 +799,8 @@ class InterfaceAStar:
         """Reinicia a execução e a visualização da interface mantendo o mesmo tabuleiro."""
         self.pausar_execucao()
         self.resultado_busca = None
-        self.indice_etapa_atual = 0
+        self.indice_solucao_atual = 0
+        self.indice_analise_atual = 0
         self._reiniciar_interface_visual()
 
     def embaralhar_estado(self):
@@ -685,8 +808,21 @@ class InterfaceAStar:
         self.pausar_execucao()
         self.estado_inicial_atual = gerar_estado_embaralhado(movimentos=20)
         self.resultado_busca = None
-        self.indice_etapa_atual = 0
+        self.indice_solucao_atual = 0
+        self.indice_analise_atual = 0
         self._reiniciar_interface_visual()
+
+    def alterar_para_modo_solucao(self):
+        """Exibe o tabuleiro principal usando apenas o caminho final da solução."""
+        self.modo_visualizacao_var.set("solucao")
+        if self.resultado_busca:
+            self._mostrar_etapa_atual()
+
+    def alterar_para_modo_analise(self):
+        """Exibe o tabuleiro principal usando o histórico de análise do A*."""
+        self.modo_visualizacao_var.set("analise")
+        if self.resultado_busca:
+            self._mostrar_etapa_atual()
 
     def comparar_heuristicas(self):
         """Executa as duas heurísticas e mostra os resultados lado a lado."""
