@@ -4,7 +4,11 @@
 Agente A* para o Quebra-Cabeça de 8 Peças
 
 ## Integrantes
-Preencher com os nomes dos integrantes da equipe.
+Enzo Féola Tiburcio
+Jenniffer Karolayne de Sousa Pereira
+João Victor Barreto Vaz
+Luana Victoria Sousa Beck
+Rodrigo Eiji Hirata
 
 ## Orientação para grupos de desenvolvedores
 Este projeto está público.
