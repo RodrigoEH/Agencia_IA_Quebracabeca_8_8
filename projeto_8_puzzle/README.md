@@ -74,6 +74,8 @@ python projeto_8_puzzle/interface.py
 5. Use os modos:
    - `Ver caminho final` para acompanhar apenas a solução correta;
    - `Ver análise da busca` para observar os estados internos explorados pelo A*.
+6. Em telas menores, a interface reorganiza os painéis e os botões automaticamente.
+7. Se a altura da tela não for suficiente, use a roda do mouse para rolar a janela e visualizar todo o conteúdo.
 
 ## Explicação da interface gráfica
 `Open List resumida`: mostra os próximos estados que ainda podem ser explorados pelo algoritmo A*.
@@ -83,6 +85,8 @@ python projeto_8_puzzle/interface.py
 `Área comparativa`: exibe, lado a lado, os resultados das duas heurísticas para facilitar a comparação.
 
 `Caminho final`: apresenta a sequência de estados da solução encontrada, do estado inicial até o objetivo.
+
+`Layout responsivo`: reorganiza os painéis e redistribui os botões de controle em resoluções menores, evitando cortes na visualização.
 
 ## Arquivo principal
 `projeto_8_puzzle/main.py`

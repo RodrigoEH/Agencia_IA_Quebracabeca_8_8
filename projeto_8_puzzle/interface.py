@@ -62,8 +62,6 @@ class InterfaceAStar:
     def __init__(self, janela):
         self.janela = janela
         self.janela.title(TITULO_PROJETO)
-        self.janela.geometry("1180x760")
-        self.janela.minsize(980, 680)
         self.janela.configure(bg=COR_FUNDO)
 
         self.estado_inicial_atual = gerar_estado_embaralhado(movimentos=20)
@@ -85,10 +83,35 @@ class InterfaceAStar:
         self.texto_comparacao_esquerda = None
         self.texto_comparacao_direita = None
         self.label_observacao = None
+        self.canvas_principal = None
+        self.quadro_rolavel = None
+        self.janela_canvas_id = None
+        self.corpo = None
+        self.painel_esquerdo = None
+        self.painel_direito = None
+        self.quadro_controles = None
+        self.botoes_controle = []
+        self.widgets_com_wrap = []
 
+        self._configurar_janela_responsiva()
         self._criar_estilo()
         self._criar_layout()
+        self._habilitar_rolagem_mouse()
         self._reiniciar_interface_visual()
+
+    def _configurar_janela_responsiva(self):
+        """ETAPA EXTRA: ajusta o tamanho inicial conforme a resolução da tela."""
+        largura_tela = self.janela.winfo_screenwidth()
+        altura_tela = self.janela.winfo_screenheight()
+
+        largura_janela = min(1280, max(900, int(largura_tela * 0.94)))
+        altura_janela = min(860, max(620, int(altura_tela * 0.90)))
+
+        posicao_x = max((largura_tela - largura_janela) // 2, 0)
+        posicao_y = max((altura_tela - altura_janela) // 2, 0)
+
+        self.janela.geometry(f"{largura_janela}x{altura_janela}+{posicao_x}+{posicao_y}")
+        self.janela.minsize(840, 620)
 
     def _criar_estilo(self):
         """Define o estilo visual principal da interface."""
@@ -141,48 +164,153 @@ class InterfaceAStar:
         )
         titulo.pack(fill="x", padx=14, pady=(10, 6))
 
-        corpo = tk.Frame(self.janela, bg=COR_FUNDO)
-        corpo.pack(fill="both", expand=True, padx=14, pady=(0, 14))
-        corpo.grid_columnconfigure(0, weight=3)
-        corpo.grid_columnconfigure(1, weight=2)
-        corpo.grid_rowconfigure(0, weight=1)
+        area_rolagem = tk.Frame(self.janela, bg=COR_FUNDO)
+        area_rolagem.pack(fill="both", expand=True, padx=14, pady=(0, 14))
+        area_rolagem.grid_rowconfigure(0, weight=1)
+        area_rolagem.grid_columnconfigure(0, weight=1)
 
-        painel_esquerdo = tk.Frame(corpo, bg=COR_FUNDO)
-        painel_esquerdo.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
-        painel_esquerdo.grid_columnconfigure(0, weight=1)
+        self.canvas_principal = tk.Canvas(
+            area_rolagem,
+            bg=COR_FUNDO,
+            highlightthickness=0,
+        )
+        barra_vertical = ttk.Scrollbar(
+            area_rolagem,
+            orient="vertical",
+            command=self.canvas_principal.yview,
+        )
+        self.canvas_principal.configure(yscrollcommand=barra_vertical.set)
 
-        painel_direito = tk.Frame(corpo, bg=COR_FUNDO)
-        painel_direito.grid(row=0, column=1, sticky="nsew")
-        painel_direito.grid_columnconfigure(0, weight=1)
+        self.canvas_principal.grid(row=0, column=0, sticky="nsew")
+        barra_vertical.grid(row=0, column=1, sticky="ns")
+
+        self.quadro_rolavel = tk.Frame(self.canvas_principal, bg=COR_FUNDO)
+        self.janela_canvas_id = self.canvas_principal.create_window(
+            (0, 0),
+            window=self.quadro_rolavel,
+            anchor="nw",
+        )
+
+        self.quadro_rolavel.bind("<Configure>", self._ao_configurar_conteudo)
+        self.canvas_principal.bind("<Configure>", self._ao_configurar_canvas)
+        self.janela.bind("<Configure>", self._ao_redimensionar_janela)
+
+        self.corpo = tk.Frame(self.quadro_rolavel, bg=COR_FUNDO)
+        self.corpo.pack(fill="both", expand=True)
+        self.corpo.grid_columnconfigure(0, weight=3)
+        self.corpo.grid_columnconfigure(1, weight=2)
+        self.corpo.grid_rowconfigure(0, weight=1)
+
+        self.painel_esquerdo = tk.Frame(self.corpo, bg=COR_FUNDO)
+        self.painel_esquerdo.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        self.painel_esquerdo.grid_columnconfigure(0, weight=1)
+
+        self.painel_direito = tk.Frame(self.corpo, bg=COR_FUNDO)
+        self.painel_direito.grid(row=0, column=1, sticky="nsew")
+        self.painel_direito.grid_columnconfigure(0, weight=1)
         for linha in range(4):
-            painel_direito.grid_rowconfigure(linha, weight=1)
+            self.painel_direito.grid_rowconfigure(linha, weight=1)
 
-        self._criar_painel_tabuleiro_e_heuristica(painel_esquerdo)
-        self._criar_painel_informacoes(painel_esquerdo)
-        self._criar_painel_controles(painel_esquerdo)
+        self._criar_painel_tabuleiro_e_heuristica(self.painel_esquerdo)
+        self._criar_painel_informacoes(self.painel_esquerdo)
+        self._criar_painel_controles(self.painel_esquerdo)
 
         self.texto_open = self._criar_painel_texto(
-            painel_direito,
+            self.painel_direito,
             "Open List resumida",
             "Mostra os próximos estados que ainda podem ser explorados pela busca.",
             0,
             8,
         )
         self.texto_closed = self._criar_painel_texto(
-            painel_direito,
+            self.painel_direito,
             "Closed List resumida",
             "Mostra os estados que já foram expandidos e analisados pelo algoritmo.",
             1,
             8,
         )
-        self._criar_painel_comparacao(painel_direito, 2)
+        self._criar_painel_comparacao(self.painel_direito, 2)
         self.texto_caminho = self._criar_painel_texto(
-            painel_direito,
+            self.painel_direito,
             "Caminho final",
             "Apresenta a sequência de passos da solução encontrada até o estado objetivo.",
             3,
             8,
         )
+        self._ajustar_layout_responsivo()
+
+    def _ao_configurar_conteudo(self, _evento):
+        """Atualiza a região rolável sempre que o conteúdo muda."""
+        self.canvas_principal.configure(scrollregion=self.canvas_principal.bbox("all"))
+
+    def _ao_configurar_canvas(self, evento):
+        """Mantém a largura do conteúdo alinhada ao espaço visível do canvas."""
+        self.canvas_principal.itemconfigure(self.janela_canvas_id, width=evento.width)
+        self._ajustar_layout_responsivo()
+
+    def _ao_redimensionar_janela(self, evento):
+        """Reorganiza a interface quando a janela muda de tamanho."""
+        if evento.widget == self.janela:
+            self._ajustar_layout_responsivo()
+
+    def _habilitar_rolagem_mouse(self):
+        """Permite rolagem com a roda do mouse."""
+        self.canvas_principal.bind_all("<MouseWheel>", self._rolar_mousewheel)
+
+    def _rolar_mousewheel(self, evento):
+        """Executa a rolagem vertical da interface."""
+        if self.canvas_principal is None:
+            return
+        self.canvas_principal.yview_scroll(int(-1 * (evento.delta / 120)), "units")
+
+    def _registrar_widget_com_wrap(self, widget, largura_ampla, largura_estreita):
+        """Guarda widgets que precisam adaptar a quebra de linha."""
+        self.widgets_com_wrap.append((widget, largura_ampla, largura_estreita))
+
+    def _ajustar_layout_responsivo(self):
+        """ETAPA EXTRA: reorganiza o conteúdo para telas menores."""
+        if self.corpo is None:
+            return
+
+        largura_atual = max(self.janela.winfo_width(), self.janela.winfo_reqwidth())
+        modo_estreito = largura_atual < 1180
+
+        self.painel_esquerdo.grid_forget()
+        self.painel_direito.grid_forget()
+
+        if modo_estreito:
+            self.corpo.grid_columnconfigure(0, weight=1)
+            self.corpo.grid_columnconfigure(1, weight=0)
+            self.painel_esquerdo.grid(row=0, column=0, sticky="nsew", padx=0, pady=(0, 10))
+            self.painel_direito.grid(row=1, column=0, sticky="nsew", padx=0)
+            colunas_botoes = 2
+        else:
+            self.corpo.grid_columnconfigure(0, weight=3)
+            self.corpo.grid_columnconfigure(1, weight=2)
+            self.painel_esquerdo.grid(row=0, column=0, sticky="nsew", padx=(0, 10), pady=0)
+            self.painel_direito.grid(row=0, column=1, sticky="nsew", padx=0)
+            colunas_botoes = 3
+
+        self._organizar_botoes_controle(colunas_botoes)
+
+        for widget, largura_ampla, largura_estreita in self.widgets_com_wrap:
+            widget.configure(wraplength=largura_estreita if modo_estreito else largura_ampla)
+
+    def _organizar_botoes_controle(self, quantidade_colunas):
+        """Redistribui os botões para caber melhor em telas estreitas."""
+        if self.quadro_controles is None or not self.botoes_controle:
+            return
+
+        for indice_coluna in range(4):
+            self.quadro_controles.grid_columnconfigure(indice_coluna, weight=0)
+
+        for indice, botao in enumerate(self.botoes_controle):
+            linha = indice // quantidade_colunas
+            coluna = indice % quantidade_colunas
+            botao.grid_configure(row=linha, column=coluna, padx=6, pady=8, sticky="ew")
+
+        for indice_coluna in range(quantidade_colunas):
+            self.quadro_controles.grid_columnconfigure(indice_coluna, weight=1)
 
     def _criar_painel_tabuleiro_e_heuristica(self, container):
         """Cria o tabuleiro visual e a seleção da heurística."""
@@ -269,23 +397,23 @@ class InterfaceAStar:
             area_opcoes,
             text="Estado atual: embaralhado para teste",
             justify="left",
-            wraplength=420,
             bg=COR_FUNDO,
             fg="#5b5248",
             font=("Georgia", 10, "bold"),
         )
         self.label_estado_atual.grid(row=6, column=0, sticky="w", pady=(10, 2))
+        self._registrar_widget_com_wrap(self.label_estado_atual, 420, 300)
 
         self.label_movimento_destacado = tk.Label(
             area_opcoes,
             text="Movimento destacado: aguardando início",
             justify="left",
-            wraplength=420,
             bg=COR_FUNDO,
             fg=COR_ACAO,
             font=("Georgia", 11, "bold"),
         )
         self.label_movimento_destacado.grid(row=7, column=0, sticky="w", pady=(4, 4))
+        self._registrar_widget_com_wrap(self.label_movimento_destacado, 420, 300)
 
     def _criar_painel_informacoes(self, container):
         """Cria o painel com os dados resumidos da etapa atual."""
@@ -326,12 +454,12 @@ class InterfaceAStar:
 
     def _criar_painel_controles(self, container):
         """Cria os botões de controle da execução."""
-        quadro = ttk.LabelFrame(
+        self.quadro_controles = ttk.LabelFrame(
             container,
             text="Botões de controle",
             style="Painel.TLabelframe",
         )
-        quadro.grid(row=2, column=0, sticky="ew")
+        self.quadro_controles.grid(row=2, column=0, sticky="ew")
 
         botoes = [
             ("Iniciar", self.iniciar_busca),
@@ -347,19 +475,14 @@ class InterfaceAStar:
 
         for indice, (texto, comando) in enumerate(botoes):
             botao = ttk.Button(
-                quadro,
+                self.quadro_controles,
                 text=texto,
                 command=comando,
                 style="Acao.TButton",
             )
-            botao.grid(
-                row=indice // 3,
-                column=indice % 3,
-                padx=6,
-                pady=8,
-                sticky="ew",
-            )
-            quadro.grid_columnconfigure(indice % 3, weight=1)
+            self.botoes_controle.append(botao)
+
+        self._organizar_botoes_controle(3)
 
     def _criar_painel_texto(self, container, titulo, descricao, linha, altura):
         """Cria um painel de texto com rolagem vertical."""
@@ -376,12 +499,12 @@ class InterfaceAStar:
             quadro,
             text=descricao,
             justify="left",
-            wraplength=380,
             bg=COR_FUNDO,
             fg="#5a5148",
             font=("Georgia", 9),
         )
         label_descricao.grid(row=0, column=0, columnspan=2, sticky="w", padx=8, pady=(6, 2))
+        self._registrar_widget_com_wrap(label_descricao, 380, 300)
 
         texto = tk.Text(
             quadro,
@@ -420,12 +543,12 @@ class InterfaceAStar:
                 "incluindo custo, movimentos e estados expandidos."
             ),
             justify="left",
-            wraplength=420,
             bg=COR_FUNDO,
             fg="#5a5148",
             font=("Georgia", 9),
         )
         label_descricao.grid(row=0, column=0, columnspan=2, sticky="w", padx=8, pady=(6, 2))
+        self._registrar_widget_com_wrap(label_descricao, 420, 320)
 
         self.texto_comparacao_esquerda = self._criar_texto_interno(quadro, 0, 1)
         self.texto_comparacao_direita = self._criar_texto_interno(quadro, 1, 1)
@@ -434,12 +557,12 @@ class InterfaceAStar:
             quadro,
             text="As observações comparativas aparecerão após a execução da comparação.",
             justify="left",
-            wraplength=420,
             bg=COR_FUNDO,
             fg="#5a5148",
             font=("Georgia", 9),
         )
         self.label_observacao.grid(row=2, column=0, columnspan=2, sticky="w", padx=8, pady=(8, 2))
+        self._registrar_widget_com_wrap(self.label_observacao, 420, 320)
 
     def _criar_texto_interno(self, container, coluna, linha):
         """Cria um painel de texto interno da comparação."""
